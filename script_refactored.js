@@ -72,31 +72,29 @@ $(document).ready(function () {
     }
 
     function tick() {
-        gatherWood();
-        gatherStone();
-        gatherFood();
+        gatherResources();
     }
 
     // Display the correct values.
     function updateValues() {
         document.getElementById("woodAmount").innerHTML = player.storage.wood;
         document.getElementById("maxWood").innerHTML = player.capacity.wood;
-        document.getElementById("woodIncrement").innerHTML = wood.increment;
+        document.getElementById("woodIncrement").innerHTML = player.increment.wood;
         document.getElementById("stoneAmount").innerHTML = player.storage.stone;
         document.getElementById("maxStone").innerHTML = player.capacity.stone;
-        document.getElementById("stoneIncrement").innerHTML = stone.increment;
+        document.getElementById("stoneIncrement").innerHTML = player.increment.stone;
         document.getElementById("foodAmount").innerHTML = player.storage.food;
         document.getElementById("maxFood").innerHTML = player.capacity.food;
-        document.getElementById("foodIncrement").innerHTML = food.increment;
+        document.getElementById("foodIncrement").innerHTML = player.increment.food;
 
-        document.getElementById("workerAmount").innerHTML = worker.amount;
+        document.getElementById("workerAmount").innerHTML = player.population;
         document.getElementById("maxPop").innerHTML = player.maxPopulation;
-        document.getElementById("lumberjackAmount").innerHTML = worker.lumberjack.amount;
-        document.getElementById("lumberjackCost").innerHTML = worker.lumberjack.cost;
-        document.getElementById("minerAmount").innerHTML = worker.miner.amount;
-        document.getElementById("minerCost").innerHTML = worker.miner.cost;
-        document.getElementById("hunterAmount").innerHTML = worker.hunter.amount;
-        document.getElementById("hunterCost").innerHTML = worker.hunter.cost;
+        document.getElementById("lumberjackAmount").innerHTML = lumberjack.count;
+        document.getElementById("lumberjackCost").innerHTML = lumberjack.cost.food;
+        document.getElementById("minerAmount").innerHTML = miner.count;
+        document.getElementById("minerCost").innerHTML = miner.cost.food;
+        document.getElementById("hunterAmount").innerHTML = hunter.count;
+        document.getElementById("hunterCost").innerHTML = hunter.cost.food;
 
         $("#tentAmount").html(tent.count);
         document.getElementById("tentCostWood").innerHTML = tent.cost.wood;
@@ -122,20 +120,17 @@ $(document).ready(function () {
 
     // Click to Chop, Mine, Gather
     $('#chopWood').click(function () {
-        player.storage.wood += clickIncrement;
-        checkMaxWood();
+        player.storage.addUntilMax(new Resources(clickIncrement, 0, 0));
         updateValues();
     });
 
     $('#mineStone').click(function () {
-        player.storage.stone += clickIncrement;
-        checkMaxStone();
+        player.storage.addUntilMax(new Resources(0, clickIncrement, 0));
         updateValues();
     });
 
     $('#gatherFood').click(function () {
-        player.storage.food += clickIncrement;
-        checkMaxFood();
+        player.storage.addUntilMax(new Resources(0, 0, clickIncrement));
         updateValues();
     });
 
@@ -155,47 +150,12 @@ $(document).ready(function () {
         updateValues();
     });
 
-    // Lumberjacks Gather Wood
-    function gatherWood() {
-        player.increment.wood = lumberjack.increment.wood * lumberjack.count;
-        player.storage.wood += player.increment.wood;
-        checkMaxWood();
+    function gatherResources() {
+        player.increment.wood = lumberjack.increment.wood * lumberjack.count * lumberjack.factor;
+        player.increment.stone = miner.increment.stone * miner.count * miner.factor;
+        player.increment.food = hunter.increment.food * hunter.count * hunter.factor;
+        player.storage.addUntilMax(player.increment, player.capacity);
         updateValues();
-    }
-
-    // Miner Gather Stone
-    function gatherStone() {
-        player.increment.stone = miner.increment.stone * miner.count;
-        player.storage.stone += player.increment.stone;
-        checkMaxStone();
-        updateValues();
-    }
-
-    // Hunter Gather Food
-    function gatherFood() {
-        player.increment.food = hunter.increment.food * hunter.count;
-        player.storage.food += player.increment.food;
-        checkMaxFood();
-        updateValues();
-    }
-
-    // Test max resources
-    function checkMaxWood() {
-        if (wood.amount > wood.max) {
-            wood.amount = wood.max;
-        }
-    }
-
-    function checkMaxStone() {
-        if (stone.amount > stone.max) {
-            stone.amount = stone.max;
-        }
-    }
-
-    function checkMaxFood() {
-        if (food.amount > food.max) {
-            food.amount = food.max;
-        }
     }
 
     function save_game() {
@@ -247,10 +207,7 @@ $(document).ready(function () {
 
     // Research Hostel
     $('#researchHostel').click(function () {
-        if (wood.amount >= 400 && stone.amount >= 150) {
-            wood.amount = wood.amount - 400;
-            stone.amount = stone.amount - 150;
-
+        if (player.storage.sub(new Resources(400, 150, 0))) {
             $('#researchHostel').addClass('hidden');
             $('.progress-wrap-hostel').removeClass('hidden');
 
@@ -300,10 +257,7 @@ $(document).ready(function () {
 
     // Upgrades
     $('#upgradeTwoFingers').click(function () {
-        if (wood.amount >= 100 && stone.amount >= 100 && food.amount >= 100) {
-            wood.amount = wood.amount - 100;
-            stone.amount = stone.amount - 100;
-            food.amount = food.amount - 100;
+        if (player.storage.sub(new Resources(100, 100, 100))) {
             clickIncrement = clickIncrement + 1;
             $('.upgradeTwoFingers').addClass('hidden');
             $('.upgradeFiveFingers').removeClass('hidden');
@@ -315,10 +269,7 @@ $(document).ready(function () {
     });
 
     $('#upgradeFiveFingers').click(function () {
-        if (wood.amount >= 450 && stone.amount >= 450 && food.amount >= 120) {
-            wood.amount = wood.amount - 450;
-            stone.amount = stone.amount - 450;
-            food.amount = food.amount - 120;
+        if (player.storage.sub(new Resources(450, 450, 120))) {
             clickIncrement = clickIncrement + 3;
             $('.upgradeFiveFingers').addClass('hidden');
             $("#upgrades").prepend($('<p>Five Fingers | Five Resources Per Click</p>').fadeIn('slow'));
@@ -329,84 +280,47 @@ $(document).ready(function () {
     });
 
     $('#upgradeDoubleSleepingBags').click(function () {
-        if (wood.amount >= 100 && stone.amount >= 100 && food.amount >= 100) {
-            wood.amount = wood.amount - 100;
-            stone.amount = stone.amount - 100;
-            food.amount = food.amount - 100;
-            tent.residents = 2;
-            maxPop = maxPop + tent.amount; //This only works because we are adding ONE resident.
+        if (tent.upgrade()) {
             $('.upgradeDoubleSleepingBags').addClass('hidden');
             $("#upgrades").prepend($('<p>Double Sleeping Bags | Two People, One Tent</p>').fadeIn('slow'));
             updateValues();
-        } else {
-            $("#info").prepend($('<p>You need more resources.</p>').fadeIn('slow'));
         }
     });
 
     $('#upgradeBunkBeds').click(function () {
-        if (wood.amount >= 100 && stone.amount >= 100 && food.amount >= 100) {
-            wood.amount = wood.amount - 100;
-            stone.amount = stone.amount - 100;
-            food.amount = food.amount - 100;
-            house.residents = 5;
-            maxPop = maxPop + house.amount; //This only works because we are adding ONE resident.
+        if (house.upgrade(0.25)) {
             $('.upgradeBunkBeds').addClass('hidden');
             $("#upgrades").prepend($('<p>Bunk Beds | Five People, One House</p>').fadeIn('slow'));
             updateValues();
-        } else {
-            $("#info").prepend($('<p>You need more resources.</p>').fadeIn('slow'));
         }
     });
 
     $('#upgradeSharpenAxes').click(function () {
-        if (wood.amount >= 50 && stone.amount >= 100 && food.amount >= 50) {
-            wood.amount = wood.amount - 50;
-            stone.amount = stone.amount - 100;
-            food.amount = food.amount - 50;
-            worker.lumberjack.increment = 2;
-            wood.increment = worker.lumberjack.increment * worker.lumberjack.amount;
+        if (lumberjack.upgrade()) {
             $('.upgradeSharpenAxes').addClass('hidden');
             $("#upgrades").prepend($('<p>Sharpen Axes | Lumberjacks Chop Two Wood Each</p>').fadeIn('slow'));
             updateValues();
-        } else {
-            $("#info").prepend($('<p>You need more resources.</p>').fadeIn('slow'));
         }
     });
 
     $('#upgradeSharpenPicks').click(function () {
-        if (wood.amount >= 50 && stone.amount >= 100 && food.amount >= 50) {
-            wood.amount = wood.amount - 50;
-            stone.amount = stone.amount - 100;
-            food.amount = food.amount - 50;
-            worker.miner.increment = 2;
-            stone.increment = worker.miner.increment * worker.miner.amount;
+        if (miner.upgrade()) {
             $('.upgradeSharpenPicks').addClass('hidden');
             $("#upgrades").prepend($('<p>Sharpen Picks | Miners Mine Two Stone Each</p>').fadeIn('slow'));
             updateValues();
-        } else {
-            $("#info").prepend($('<p>You need more resources.</p>').fadeIn('slow'));
         }
     });
 
     $('#upgradeSharpenArrows').click(function () {
-        if (wood.amount >= 50 && stone.amount >= 100 && food.amount >= 50) {
-            wood.amount = wood.amount - 50;
-            stone.amount = stone.amount - 100;
-            food.amount = food.amount - 50;
-            worker.hunter.increment = 2;
-            food.increment = worker.hunter.increment * worker.hunter.amount;
+        if (hunter.upgrade()) {
             $('.upgradeSharpenArrows').addClass('hidden');
             $("#upgrades").prepend($('<p>Sharpen Arrows | Hunters Gather Two Food Each</p>').fadeIn('slow'));
             updateValues();
-        } else {
-            $("#info").prepend($('<p>You need more resources.</p>').fadeIn('slow'));
         }
     });
 
     $('#upgradeMatesRatesWood').click(function () {
-        if (stone.amount >= 150 && food.amount >= 50) {
-            stone.amount = stone.amount - 150;
-            food.amount = food.amount - 50;
+        if (player.storage.sub(new Resources(0, 150, 50))) {
             house.cost.wood = house.cost.wood - 20;
             tent.cost.wood = tent.cost.wood - 15;
             $('.upgradeMatesRatesWood').addClass('hidden');
@@ -418,9 +332,7 @@ $(document).ready(function () {
     });
 
     $('#upgradeMatesRatesStone').click(function () {
-        if (wood.amount >= 150 && food.amount >= 50) {
-            wood.amount = wood.amount - 150;
-            food.amount = food.amount - 50;
+        if (player.storage.sub(new Resources(150, 0, 50))) {
             house.cost.stone = house.cost.stone - 20;
             $('.upgradeMatesRatesStone').addClass('hidden');
             $("#upgrades").prepend($('<p>Mates Rates - Stone | Houses Cost Less Stone</p>').fadeIn('slow'));
